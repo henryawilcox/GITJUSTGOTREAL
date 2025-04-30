@@ -14,7 +14,7 @@
 - N/A
   
 ## Current Items:
-- 
+- Each Person to start work on their individual modules for assignment
   
 ---
 
