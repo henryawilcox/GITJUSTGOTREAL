@@ -1,0 +1,9 @@
+../Inc/core_cm4.h:1688:22:__NVIC_EnableIRQ	2
+../Inc/core_cm4.h:1816:22:__NVIC_SetPriority	2
+../Src/dio.c:16:6:EXTI0_IRQHandler	2
+../Src/dio.c:29:13:enable_clocks	1
+../Src/dio.c:36:13:initialise_board	1
+../Src/dio.c:44:13:enable_interrupt	1
+../Src/dio.c:69:6:dio_init	1
+../Src/dio.c:88:9:dio_get_led_state	1
+../Src/dio.c:94:6:dio_set_led_state	1
