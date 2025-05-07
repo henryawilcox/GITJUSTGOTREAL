@@ -18,6 +18,7 @@
 - Oscar to continue working on Gyro
 - Henry to continue working on claw
 - Angus to fix up last bits of servo motors for gantry
+- Angus to 3D print claw
   
 ---
 
