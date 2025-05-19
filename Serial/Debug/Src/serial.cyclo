@@ -1,0 +1,3 @@
+../Src/serial.c:50:6:SerialInitialise	6
+../Src/serial.c:103:6:SerialOutputChar	2
+../Src/serial.c:119:6:SerialSendString	2
