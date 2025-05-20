@@ -9,7 +9,7 @@ SerialPort USART1_PORT = {
     GPIOC,                    // GPIO port C used for TX/RX
     RCC_APB2ENR_USART1EN,     // Clock enable bit for USART1 on APB2
     0x00,                     // No APB1 usage for USART1
-    RCC_AHBENR_IOPAEN,       // Clock enable bit for GPIOC on AHB
+    RCC_AHBENR_GPIOCEN,       // Clock enable bit for GPIOC on AHB
     0xA00,                    // MODER config for PC10/PC11 (alternate function mode)
     0xF00,                    // OSPEEDR config for PC10/PC11 (high speed)
     0x770000,                 // AFR[0] setting for PC10/PC11 to alternate function 7 (USART)
@@ -30,7 +30,7 @@ SerialPort USART2_PORT = {
     GPIOA,                     // GPIO port A used for TX/RX
     RCC_APB1ENR_USART2EN,      // Clock enable bit for USART2 on APB1
     0x00,                      // No APB2 usage for USART2
-    RCC_AHBENR_GPIOAEN,        // Clock enable bit for GPIOA on AHB
+    RCC_AHBENR_IOPAEN,        // Clock enable bit for GPIOA on AHB
     0xA0,                      // MODER config for PA2/PA3 (alternate function mode)
     0xF0,                      // OSPEEDR config for PA2/PA3 (high speed)
     0x7700,                    // AFR[0] setting for PA2/PA3 to alternate function 7 (USART)
