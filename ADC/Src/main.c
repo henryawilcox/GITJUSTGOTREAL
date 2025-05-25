@@ -20,11 +20,25 @@
 #include "stm32f303xc.h"
 #include "serial.h"
 
+typedef struct {
+    uint16_t value_1;
+    uint16_t value_2;
+    uint16_t value_3;
+} ADCValues_t;
+
 
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
+
+void delay(volatile uint32_t ms) {
+    // This assumes the CPU is running at around 72 MHz
+    // Adjust 8000 for more/less precise timing
+    for (volatile uint32_t i = 0; i < ms * 8000; i++) {
+        __NOP(); // Assembly NOP (No Operation) instruction
+    }
+}
 
 
 // enable the clocks for desired peripherals (GPIOA, C and E)
@@ -42,101 +56,71 @@ void initialise_board() {
 }
 
 
-uint16_t ReadADC(uint32_t channel) {
+void ADC_Init(void) {
+    // Enable ADC1 clock
+    RCC->AHBENR |= RCC_AHBENR_ADC12EN;
 
-	ADC1->SQR1 = 0;
-	ADC1->SQR1 |= channel << ADC_SQR1_SQ1_Pos; // set the request for channel specified
+    // Sync ADC clock with AHB
+    ADC12_COMMON->CCR |= ADC12_CCR_CKMODE_0;
 
-	// request the process to start
-	ADC1->CR |= ADC_CR_ADSTART;
+    // Enable ADC voltage regulator
+    ADC1->CR &= ~ADC_CR_ADVREGEN;
+    ADC1->CR |= ADC_CR_ADVREGEN_0;
+    for (volatile int i = 0; i < 1000; i++); // Small delay for regulator startup
 
-	// Wait for the end of conversion
-	while((ADC1->ISR &= ADC_ISR_EOS) != ADC_ISR_EOS);
+    // Set single-ended input
+    ADC1->CR &= ~ADC_CR_ADCALDIF;
 
-	return ADC1->DR;
+    // Calibrate
+    ADC1->CR |= ADC_CR_ADCAL;
+    while (ADC1->CR & ADC_CR_ADCAL);
+
+    // Configure sampling time (optional – can uncomment and tune)
+    // ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP2_Pos); // CH2
+    // ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP3_Pos); // CH3
+    // ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP4_Pos); // CH4
+
+    // Set conversion sequence: CH2 → CH3 → CH4
+    ADC1->SQR1 = 0;
+    ADC1->SQR1 |= (0x02 << ADC_SQR1_SQ1_Pos); // CH2
+    ADC1->SQR1 |= (0x03 << ADC_SQR1_SQ2_Pos); // CH3
+    ADC1->SQR1 |= (0x04 << ADC_SQR1_SQ3_Pos); // CH4
+    ADC1->SQR1 |= (2 << ADC_SQR1_L_Pos);      // L = 2 → 3 conversions
+
+    // Single-shot mode
+    ADC1->CFGR &= ~ADC_CFGR_CONT;
+
+    // Enable ADC
+    ADC1->CR |= ADC_CR_ADEN;
+    while (!(ADC1->ISR & ADC_ISR_ADRDY));
 }
 
+ADCValues_t ADC_Read(void) {
+    ADCValues_t result;
 
-void ContinuousReadThreeChannelADC() {
-	uint8_t buffer1[64] = "This is a string !\r\n";
-	// Get pointer to LEDs (PE8–PE15)
-	uint8_t *led_register = ((uint8_t*)&(GPIOE->ODR)) + 1;
+    // Start conversion
+    ADC1->CR |= ADC_CR_ADSTART;
 
-	// Enable ADC1 clock
-	RCC->AHBENR |= RCC_AHBENR_ADC12EN;
+    // Wait and read channel 1
+    while (!(ADC1->ISR & ADC_ISR_EOC));
+    result.value_1 = ADC1->DR;
 
-	// ADC clock mode (HCLK/1)
-	ADC12_COMMON->CCR |= ADC12_CCR_CKMODE_0;
+    // Wait and read channel 2
+    while (!(ADC1->ISR & ADC_ISR_EOC));
+    result.value_2 = ADC1->DR;
 
-	// ADC voltage regulator ON
-	ADC1->CR &= ~ADC_CR_ADVREGEN;
-	ADC1->CR |= ADC_CR_ADVREGEN_0;
+    // Wait and read channel 3
+    while (!(ADC1->ISR & ADC_ISR_EOC));
+    result.value_3 = ADC1->DR;
 
-	// Set to single-ended input
-	ADC1->CR &= ~ADC_CR_ADCALDIF;
+    // Clear End of Sequence
+    ADC1->ISR |= ADC_ISR_EOS;
 
-	// Calibrate ADC
-	ADC1->CR |= ADC_CR_ADCAL;
-	while (ADC1->CR & ADC_CR_ADCAL);  // wait for calibration
-
-	// Sampling time (maximum for better accuracy)
-	ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP2_Pos); // CH2
-	ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP3_Pos); // CH3
-	ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP4_Pos); // CH4
-
-	// Set sequence: CH2 → CH3 → CH4
-	ADC1->SQR1 = 0;
-	ADC1->SQR1 |= (0x02 << ADC_SQR1_SQ1_Pos); // 1st: CH2
-	ADC1->SQR1 |= (0x03 << ADC_SQR1_SQ2_Pos); // 2nd: CH3
-	ADC1->SQR1 |= (0x04 << ADC_SQR1_SQ3_Pos); // 3rd: CH4
-	ADC1->SQR1 |= (2 << ADC_SQR1_L_Pos);      // L = 2 → 3 conversions
-
-	// Continuous mode ON
-	ADC1->CFGR |= ADC_CFGR_CONT;
-
-	// Enable ADC
-	ADC1->CR |= ADC_CR_ADEN;
-	while (!(ADC1->ISR & ADC_ISR_ADRDY)); // wait for ADC to be ready
-
-	// Start conversion once
-	ADC1->CR |= ADC_CR_ADSTART;
-
-	uint16_t value1 = 0, value2 = 0, value3 = 0;
-	uint8_t scale = 0;
-
-	while (1) {
-		// Wait for EOS (End of Sequence)
-		;
-		while (!(ADC1->ISR & ADC_ISR_EOC));
-		// Read 3 conversion results from DR (in order of sequence)
-		value1 = ADC1->DR; // Channel 2
-		while (!(ADC1->ISR & ADC_ISR_EOC));
-		value2 = ADC1->DR; // Channel 3
-		while (!(ADC1->ISR & ADC_ISR_EOC));
-		value3 = ADC1->DR; // Channel 4
-
-		while (!(ADC1->ISR & ADC_ISR_EOS));
-		sprintf(buffer1, "CH2: %d, CH3: %d, CH4: %d\r\n", value1, value2, value3);
-		SerialOutputString(buffer1, &USART1_PORT);
-		// Simple LED scale visualization based on sum (for example)
-		uint32_t avg = (value1 + value2 + value3) / 3;
-		scale = avg / (0xFFF / 8);
-		if (scale > 7) scale = 7;
-
-		*led_register = 1 << scale;
-
-		// Clear EOS flag manually
-		ADC1->ISR |= ADC_ISR_EOS;
-	}
+    return result;
 }
 
 
 
-void delay(volatile uint32_t count) {
-    while (count--) {
-        __asm__("nop");
-    }
-}
 void SingleReadMultiChannelADC() {
 
 	// get a pointer to the location of the LEDs
@@ -230,7 +214,7 @@ void SingleReadMultiChannelADC() {
 		// After all conversions in the sequence are done, EOS flag is set.
 		// Reset the End Of Sequence flag (optional if not explicitly checked, but good practice)
 		ADC1->ISR |= ADC_ISR_EOS;
-		sprintf(buffer1, "CH2: %d, CH3: %d, CH4: %d\r\n", value_1, value_2, value_3);
+		sprintf(buffer1, "yasCH2: %d, CH3: %d, CH4: %d\r\n", value_1, value_2, value_3);
 		SerialOutputString(buffer1, &USART1_PORT);
 
 		// ADC full range is 12 bits (0xFFF maximum = 4095)
@@ -268,79 +252,6 @@ void SingleReadMultiChannelADC() {
 	}
 }
 
-void StartADC1_MultiChannel_Continuous(void) {
-    // Enable ADC1 clock
-    RCC->AHBENR |= RCC_AHBENR_ADC12EN;
-
-    // Configure ADC clock mode (HCLK/1)
-    ADC12_COMMON->CCR &= ~(ADC12_CCR_CKMODE);
-    ADC12_COMMON->CCR |= ADC12_CCR_CKMODE_0;
-
-    // Enable ADC voltage regulator
-    ADC1->CR &= ~ADC_CR_ADVREGEN;
-    ADC1->CR |= ADC_CR_ADVREGEN_0;
-
-    // Delay for voltage regulator startup (typ. >10us)
-    for (volatile int i = 0; i < 1000; i++);
-
-    // Calibration (single-ended)
-    ADC1->CR &= ~ADC_CR_ADCALDIF;
-    ADC1->CR |= ADC_CR_ADCAL;
-    while (ADC1->CR & ADC_CR_ADCAL); // Wait for calibration to complete
-
-    // Set sampling time (max for accuracy) for CH2, CH3, CH4
-    ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP2_Pos); // CH2
-    ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP3_Pos); // CH3
-    ADC1->SMPR1 |= (7U << ADC_SMPR1_SMP4_Pos); // CH4
-
-    // Set sequence: CH2 → CH3 → CH4
-    ADC1->SQR1 = 0;
-    ADC1->SQR1 |= (2 << ADC_SQR1_SQ1_Pos); // CH2
-    ADC1->SQR1 |= (3 << ADC_SQR1_SQ2_Pos); // CH3
-    ADC1->SQR1 |= (4 << ADC_SQR1_SQ3_Pos); // CH4
-    ADC1->SQR1 |= (2 << ADC_SQR1_L_Pos);   // 3 conversions = L = 2
-
-    // Enable continuous conversion mode
-    ADC1->CFGR |= ADC_CFGR_CONT;
-
-    // Enable ADC
-    ADC1->CR |= ADC_CR_ADEN;
-    while (!(ADC1->ISR & ADC_ISR_ADRDY)); // Wait until ADC ready
-
-    // Start ADC conversions
-    ADC1->CR |= ADC_CR_ADSTART;
-}
-
-void Loop_ReadAndPrint_ADC(void) {
-    uint16_t ch2 = 0, ch3 = 0, ch4 = 0;
-    uint8_t buffer1[64] = "This is a string !\r\n";
-
-    while(1) {
-        // Wait for EOC (CH2)
-        while (!(ADC1->ISR & ADC_ISR_EOC));
-        ch2 = ADC1->DR;
-
-        // Wait for EOC (CH3)
-        while (!(ADC1->ISR & ADC_ISR_EOC));
-        ch3 = ADC1->DR;
-
-        // Wait for EOC (CH4)
-        while (!(ADC1->ISR & ADC_ISR_EOC));
-        ch4 = ADC1->DR;
-
-        // Wait for End of Sequence flag, then clear it
-        if (ADC1->ISR & ADC_ISR_EOS) {
-            ADC1->ISR |= ADC_ISR_EOS;
-        }
-
-        // Print results
-		sprintf(buffer1, "YESCh2: %d, Ch3: %d, Ch4: %d\r\n", ch2, ch3, ch4);
-		SerialOutputString(buffer1, &USART1_PORT);
-
-        //delay(100); // small delay between prints
-    }
-}
-
 
 int main(void)
 {
@@ -350,27 +261,27 @@ int main(void)
 
 
     //StartADC1_MultiChannel_Continuous();
-    //Loop_ReadAndPrint_ADC();
+   // Loop_ReadAndPrint_ADC();
 
-	/*uint8_t buffer1[64] = "This is a string !\r\n";
-
-	uint16_t value_1 = 0;
-	uint16_t value_2 = 0;
-	uint16_t value_3 = 0;
-
-	for(;;){
-		uint16_t value_1 = ReadADC(2);
-		uint16_t value_2 = ReadADC(3);
-		uint16_t value_3 = ReadADC(4);
-		sprintf(buffer1, "CH2: %d, CH3: %d, CH4: %d\r\n", value_1, value_2, value_3);
-		SerialOutputString(buffer1, &USART1_PORT);
-
-
-	}*/
 	// check if the button is pressed, determine which mode
 	//  to enter.
-	if ((GPIOA->IDR & 0x01) == 0)
-		SingleReadMultiChannelADC();
-	else
-		ContinuousReadThreeChannelADC();
+
+	char buffer[64];
+	    ADCValues_t adc_values;
+
+	    ADC_Init(); // Set up the ADC once
+
+	    while (1) {
+	        adc_values = ADC_Read(); // Get values
+
+	        sprintf(buffer, "CH2: %d, CH3: %d, CH4: %d\r\n",
+	                adc_values.value_1,
+	                adc_values.value_2,
+	                adc_values.value_3);
+	        SerialOutputString(buffer, &USART1_PORT);
+
+	        delay(10);
+	    }
+
+	//SingleReadMultiChannelADC();
 }
