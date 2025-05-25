@@ -3,6 +3,7 @@
 	<name>ADC</name>
 	<comment></comment>
 	<projects>
+		<project>stm32f303-definitions</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
