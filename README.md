@@ -35,7 +35,7 @@ Both submodules share a common ground reference. Each board uses a structured pa
 This board handles all claw actuation via stepper motors. It implements:
 - Stepper control via timer interrupts
 - Position-based or velocity-based movement
-- Homing logic with limit switches
+- Homing logic with limit switches (deprecated)
 - Serial command interface to receive motion commands
 
 **Key files:**
