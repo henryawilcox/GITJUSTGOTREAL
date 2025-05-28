@@ -1,0 +1,9 @@
+../Inc/core_cm4.h:1688:22:__NVIC_EnableIRQ	16	static
+../Inc/core_cm4.h:1816:22:__NVIC_SetPriority	16	static
+../Src/digital_io.c:36:6:EXTI0_IRQHandler	8	static
+../Src/digital_io.c:50:6:enable_clocks_io	4	static
+../Src/digital_io.c:56:6:initialise_board_io	16	static
+../Src/digital_io.c:63:6:enable_interrupt	8	static,ignoring_inline_asm
+../Src/digital_io.c:94:9:GetLEDBitmask	4	static
+../Src/digital_io.c:104:6:SetLEDBitmask	24	static
+../Src/digital_io.c:116:6:DigitalInitialise	16	static

@@ -1,0 +1,6 @@
+../Src/game.c:15:6:System_Init	1
+../Src/game.c:34:6:countdownCallback	3
+../Src/game.c:50:6:start_countdown	2
+../Src/game.c:69:6:stop_countdown	1
+../Src/game.c:75:6:check_IR_win_condition	4
+../Src/game.c:83:6:IR_monitoring	1

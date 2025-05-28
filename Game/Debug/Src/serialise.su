@@ -1,0 +1,6 @@
+../Src/serialise.c:8:10:pack_buffer	40	static
+../Src/serialise.c:40:6:unpack_buffer	32	static
+../Src/serialise.c:72:6:send_game_data_packet	40	static
+../Src/serialise.c:87:6:send_time_data_packet	32	static
+../Src/serialise.c:101:6:send_IR_data_packet	40	static
+../Src/serialise.c:116:6:process_received_packet	24	static

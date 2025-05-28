@@ -1,0 +1,12 @@
+../Src/ADC.c:25:6:delay	24	static,ignoring_inline_asm
+../Src/ADC.c:34:13:enable_clocks_ADC	4	static
+../Src/ADC.c:38:13:initialise_board_ADC	4	static
+../Src/ADC.c:43:6:ADC_Init	16	static
+../Src/ADC.c:82:13:ADC_Read	24	static
+../Src/ADC.c:107:13:ADC_threshold	16	static
+../Src/ADC.c:117:6:ADC_Initialize	8	static
+../Src/ADC.c:133:11:ADC_ReadIRSensors	96	static
+../Src/ADC.c:157:8:ADC_CheckIRChanges	16	static
+../Src/ADC.c:176:6:ADC_ResetIRSensors	4	static
+../Src/ADC.c:185:11:ADC_GetCurrentIRValues	16	static
+../Src/ADC.c:190:6:ADC_SetIRValues	16	static

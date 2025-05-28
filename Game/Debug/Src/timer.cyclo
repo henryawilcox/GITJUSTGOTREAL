@@ -1,0 +1,13 @@
+../Inc/core_cm4.h:1688:22:__NVIC_EnableIRQ	2
+../Src/timer.c:10:6:Timer_Init	1
+../Src/timer.c:27:6:Timer_Start	1
+../Src/timer.c:32:6:Timer_StartOneShot	1
+../Src/timer.c:50:6:setTimerPeriod	1
+../Src/timer.c:56:10:getTimerPeriod	1
+../Src/timer.c:60:6:TIM2_IRQHandler	5
+../Src/timer.c:76:6:periodicBlink	2
+../Src/timer.c:83:6:oneShotBlink	2
+../Src/timer.c:90:6:enable_clocks	1
+../Src/timer.c:96:6:initialise_board	1
+../Src/timer.c:111:6:oneshot_action	1
+../Src/timer.c:117:6:periodic_action	1
