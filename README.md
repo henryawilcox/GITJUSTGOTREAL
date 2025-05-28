@@ -115,11 +115,8 @@ A central parsing function waits for the sentinel pair (0xAA, 0x55), reads the h
 
 ## Future Improvements
 
-- Implement checksum or CRC in packets for error detection.
+- Full acceleration control (if even possible at real time speeds)
 - Introduce handshaking to confirm receipt of critical commands.
 - Add GUI-based dashboard for real-time debugging and visualization.
-- Replace fixed baud rate with dynamic negotiation or configuration over serial.
-- Improve modularity by allowing runtime registration of message handlers.
-- Expand to wireless UART or BLE for remote input/control.
 
 ---
