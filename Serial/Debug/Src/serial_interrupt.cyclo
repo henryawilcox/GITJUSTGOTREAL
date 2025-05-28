@@ -1,6 +1,0 @@
-../Inc/core_cm4.h:1688:22:__NVIC_EnableIRQ	2
-../Inc/core_cm4.h:1816:22:__NVIC_SetPriority	2
-../Src/serial_interrupt.c:13:6:EnableSerialInterrupts	2
-../Src/serial_interrupt.c:38:6:HandleUSARTInterrupt	9
-../Src/serial_interrupt.c:100:6:USART1_EXTI25_IRQHandler	1
-../Src/serial_interrupt.c:105:6:USART2_EXTI26_IRQHandler	1

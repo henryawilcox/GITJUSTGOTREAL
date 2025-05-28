@@ -1,9 +1,0 @@
-../Inc/core_cm4.h:1688:22:__NVIC_EnableIRQ	16	static
-../Inc/core_cm4.h:1816:22:__NVIC_SetPriority	16	static
-../Src/serial.c:80:6:SerialInitialise	40	static
-../Src/serial.c:136:6:enable_interrupt_USART1_PC11	8	static,ignoring_inline_asm
-../Src/serial.c:150:6:enable_interrupt_USART2_PA3	8	static,ignoring_inline_asm
-../Src/serial.c:162:6:USART1_EXTI25_IRQHandler	16	static
-../Src/serial.c:214:6:USART2_EXTI26_IRQHandler	16	static
-../Src/serial.c:255:6:SerialOutputStringInterrupt	24	static
-../Src/serial.c:276:6:SerialOutputBufferInterrupt	32	static

@@ -1,5 +1,0 @@
-../Src/main.c:13:6:callback1	16	static
-../Src/main.c:26:6:callback2	16	static
-../Src/main.c:33:6:delay	24	static
-../Src/main.c:37:6:usart2_loopback_callback	16	static
-../Src/main.c:44:5:main	48	static

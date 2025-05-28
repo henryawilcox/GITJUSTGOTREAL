@@ -1,7 +1,0 @@
-../Src/serial.c:36:6:SerialInitialise	6
-../Src/serial.c:90:6:finished_transmission	2
-../Src/serial.c:99:6:SerialOutputChar	2
-../Src/serial.c:108:6:SerialOutputString	2
-../Src/serial.c:122:6:finished_receiving	1
-../Src/serial.c:132:6:SerialInputChar	2
-../Src/serial.c:141:6:SerialInputString	3
