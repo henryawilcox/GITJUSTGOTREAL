@@ -22,7 +22,7 @@
 
 // === Motion Structures ===
 typedef struct {
-    int32_t a_error, b_error;
+    int32_t a_error, b_error; //this is for the bresenham algorithm
     int32_t a_steps, b_steps;
     int8_t signA, signB;
     int32_t steps_remaining;
@@ -156,13 +156,13 @@ void set_z_target(int16_t z_target) {
 // === Step Functions ===
 //compiled inline to reduce CPU instructions
 static inline void step_motor_A(void) {
-    if (corexy.signA == 0) return;
-    int32_t x_next = corexy.x + corexy.signA;
-    int32_t y_next = corexy.y + corexy.signA;
-    if (x_next < X_MIN || x_next > X_MAX || y_next < Y_MIN || y_next > Y_MAX) return;
-    AXIS0_GPIO_PORT->BSRR = (1 << AXIS0_STEP_PIN);
-    AXIS0_GPIO_PORT->BSRR = (1 << (AXIS0_STEP_PIN + 16));
-    corexy.x = x_next;
+    if (corexy.signA == 0) return;//no motor movement needed
+    int32_t x_next = corexy.x + corexy.signA; //added portion of motor A to x position
+    int32_t y_next = corexy.y + corexy.signA; //added portion of motor A to y positon
+    if (x_next < X_MIN || x_next > X_MAX || y_next < Y_MIN || y_next > Y_MAX) return; //check planned move doesn't exceed bounds
+    AXIS0_GPIO_PORT->BSRR = (1 << AXIS0_STEP_PIN); // if valid step step the pin
+    AXIS0_GPIO_PORT->BSRR = (1 << (AXIS0_STEP_PIN + 16)); //go low doesn't need any delay it is just a rising edge detection
+    corexy.x = x_next; //valid move so add postion
     corexy.y = y_next;
 }
 
