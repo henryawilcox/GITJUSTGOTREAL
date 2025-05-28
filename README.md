@@ -14,10 +14,10 @@ The STM32 boards communicate using a custom binary serialization protocol over U
 
 ## Instructions for use
 
--Ensure system is connected properly with wires to their desination and source correct per diagram
--Use the python GUI to control the operations of the machine
--Pick a level, the higher the level the less time you have
--The button opens and closes the claw while moving your hand infront of the LIDAR sensor picks the height of the claw while moving the STM controller controls the position. How wacky!
+-  Ensure system is connected properly with wires to their desination and source correct per diagram
+- Use the python GUI to control the operations of the machine
+- Pick a level, the higher the level the less time you have
+- The button opens and closes the claw while moving your hand infront of the LIDAR sensor picks the height of the claw while moving the STM controller controls the position. How wacky!
 *Its that simple**
 
 ---
