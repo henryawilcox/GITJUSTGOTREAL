@@ -140,7 +140,7 @@ There is **no dynamic header or length field**; packets are fixed-size and inter
 - `0x00` Sensor 2 Value
 - `0x00` Sensor 3 Value
 
-# LiDAR Module Testing – LED Visualization & Serial Packet Validation
+## LiDAR Module Testing – LED Visualization & Serial Packet Validation
 
 This document outlines how to test the LiDAR sensor module integrated with an STM32F3 microcontroller. The testing is divided into two parts:
 
@@ -149,7 +149,7 @@ This document outlines how to test the LiDAR sensor module integrated with an ST
 
 ---
 
-## 🔧 Hardware Setup
+### 🔧 Hardware Setup
 
 - **Microcontroller:** STM32F3
 - **Sensor:** LiDAR module (PWM or I2C output)
@@ -158,12 +158,12 @@ This document outlines how to test the LiDAR sensor module integrated with an ST
 
 ---
 
-## 🧪 1. LED-Based Distance Visualization
+### 🧪 1. LED-Based Distance Visualization
 
-### Overview
+#### Overview
 The LiDAR module outputs distance measurements which are mapped to a range (e.g., 0–100%) and displayed via a set of LEDs.
 
-### How It Works
+#### How It Works
 - The measured height is averaged and converted to a percentage.
 - LEDs turn on progressively to represent height/distance bands.
 
