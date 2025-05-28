@@ -11,6 +11,7 @@
 #include "serial.h"
 #include "lidar.h"
 #include "gyro.h"
+#include "input_smoother.h"
 
 #include "math.h"
 
@@ -32,16 +33,12 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
-
 SPI_HandleTypeDef hspi1;
-
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
-
 PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -53,24 +50,11 @@ static void MX_USB_PCD_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-
-typedef union {
-	uint8_t all_leds;
-	struct {
-		uint8_t led_pair_1 : 2;
-		uint8_t led_pair_2 : 2;
-		uint8_t led_set_of_4 : 4;
-	} led_groups;
-} LedRegister;
-
 /* USER CODE END 0 */
-
 /**
   * @brief  The application entry point.
   * @retval int
@@ -80,24 +64,15 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
-	// PTU Pin wiring
-	//  2 x grounds between stm32 and PTU
-	//  PA1 and PA15 are TIM2 channels 1 and 2. These are used to drive
-	//    the PWM for the PTU
-	//  PA8 is TIM1 channel 1, this is used for the LASPWM (the laser PWM signal)
-	//  PB6 is I2C1 clock (SCL on the PTU), PB7 is I2C1 data (SDA on the PTU)
-
-
-
-	uint8_t string_to_send[64] = "This is a string !\r\n";
-
 	enable_clocks();
 	initialise_board();
 	Gyro_Init();
-
-	LedRegister *led_register = ((uint8_t*)&(GPIOE->ODR)) + 1;
+	Smoother_Init();
 
 	SerialInitialise(BAUD_115200, &USART1_PORT, 0x00);
+	//SerialInitialise(BAUD_115200, &USART2_PORT, 0x00);
+	//enable_interrupt_USART1_PC11();
+
 
 	HAL_StatusTypeDef return_value = 0x00;
 
@@ -143,23 +118,17 @@ int main(void)
 	TIM2->ARR = 20000; // 20000 = 20ms, which is the desired clock period for servos
 	TIM2->CR1 |= TIM_CR1_ARPE; // this makes the timing not change until the next pulse is finished
 
-	// note: for PWM if you continually change the clock period
-	// you can get unexpected results. To remove this, set ARPE so that the
-	// ARR settings are not activated until the next cycle.
 
 	initialise_ptu_i2c(&hi2c1);
-
 	TIM2->CCR2 = 1000;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-
 	// reset lidar board
 	uint8_t reset_value = 0x00;
 	return_value = HAL_I2C_Mem_Write(&hi2c1, LIDAR_WR, 0x00, 1, &reset_value, 1, 10);
-
 	uint8_t PWM_direction_clockwise = 1;
 
 	// delay for initialisation of the lidar
@@ -167,41 +136,55 @@ int main(void)
 
 	while (1)
 	{
+		// --- CLAW PACKET ---
+		uint8_t button_state = IsLimitSwitchPressed();
+		SendClawCommand(button_state, &USART1_PORT);
 
+
+		// --- MOTION PACKET ---
+
+		// Get lidar data
 		uint8_t lidar_value = 0x03;
 		HAL_I2C_Mem_Write(&hi2c1, LIDAR_WR, 0x00, 1, &lidar_value, 1, 100);
 
+		// --- Calculate claw height percent and then the z command scaled ---
 		uint8_t claw_height_percent = Lidar_GetHeightPercent(Lidar_GetLastPeriod());
-
-		// Map percentage (0–100) to number of LEDs (0–8)
-		uint8_t num_leds_on = (claw_height_percent * 8) / 100;
-		if (num_leds_on > 8) num_leds_on = 8;
-
-		// Create bitmask: if num_leds_on == 5 → 0b00011111
-		uint8_t led_mask = (1 << num_leds_on) - 1;
-
-		// Write entire upper byte (PE8–PE15) of ODR
-		*((uint8_t*)(&GPIOE->ODR) + 1) = led_mask;
+		uint16_t z_scaled = 10000 - claw_height_percent * 100;
+		z_scaled = SmoothHeight(z_scaled, 1000);
+		UpdateHeightLEDs(claw_height_percent);
 
 		// --- Add gyroscope angles ---
 		float angleX = 0, angleY = 0;
-
 		Gyro_GetFilteredAngles(&angleX, &angleY);
+		int mappedX = MapSignedAngleWithDeadzoneInt((int)angleX, 10, 50);
+		int mappedY = MapSignedAngleWithDeadzoneInt((int)angleY, 10, 50);
+		mappedX = -mappedX;
 
-		sprintf((char*)string_to_send, "angleX=%d, angleY=%d\r\n", (int)(angleX), (int)(angleY));
-		SerialOutputString((uint8_t*)string_to_send, &USART1_PORT);
+		int maxDelta = 5;  // Tunable
 
-		int mappedX = MapSignedAngleWithDeadzoneInt((int)angleX, 5, 30);
-		int mappedY = MapSignedAngleWithDeadzoneInt((int)angleY, 5, 30);
+		mappedX = SmoothAngleX(mappedX, 0, maxDelta);
+		mappedY = SmoothAngleY(mappedY, 0, maxDelta);
 
-		// Send combined serial message
-		sprintf((char*)string_to_send, "X%u,Y%d,Z%d\r\n",
-		        claw_height_percent,
-		        (int)(mappedX),
-		        (int)(mappedY));
-		SerialOutputString(string_to_send, &USART1_PORT);
 
-		HAL_Delay(50);
+		//\
+		Prepare packet buffer
+		uint8_t packet[8];
+
+		// Fill packet
+		SerializePacket((int8_t)mappedX, (int8_t)mappedY, z_scaled, packet);
+
+		// Send each byte manually using SerialOutputChar
+		for (int i = 0; i < 8; i++) {
+			SerialOutputChar(packet[i], &USART1_PORT);  // or &USART2_PORT if appropriate
+		}
+
+		// Format the values into a string
+		//sprintf(string_to_send, "X=%d, Y=%d, Z=%d\r\n", mappedX, mappedY, z_scaled);
+		// Send the string through USART1
+		//SerialOutputString((uint8_t*)string_to_send, &USART1_PORT);
+
+		// Signal Delay for stepper motor purposes
+		HAL_Delay(10);
 
 		/* USER CODE END WHILE */
 
