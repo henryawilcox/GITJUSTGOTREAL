@@ -59,6 +59,7 @@ void Servo_Init(void) {
  * @param pulse_us Desired pulse width
  */
 void Servo_SetPulse(uint16_t pulse_us) {
+    //clamp value to servo range
     if (pulse_us < 1000) pulse_us = 1000;
     if (pulse_us > 2000) pulse_us = 2000;
     SERVO_TIMER->CCR1 = pulse_us;
