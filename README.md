@@ -19,6 +19,7 @@ The STM32 boards communicate using a custom binary serialization protocol over U
 -Pick a level, the higher the level the less time you have
 -The button opens and closes the claw while moving your hand infront of the LIDAR sensor picks the height of the claw while moving the STM controller controls the position. How wacky!
 *Its that simple**
+
 ---
 
 ## System Architecture
