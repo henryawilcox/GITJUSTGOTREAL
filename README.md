@@ -17,13 +17,15 @@ The STM32 boards communicate using a custom binary serialization protocol over U
 ## System Architecture
 
 ```
+Submodule 1:
 [Controller STM32] <-UART-> [Claw STM32]
 
+Submodule 2:
 [GUI computer] <-UART-> [IR STM32]
 ```
 
 
-All boards share a common 5V power supply and ground reference. Each board uses a structured packet-based protocol to communicate with the others.
+Both submodules share a common ground reference. Each board uses a structured packet-based protocol to communicate with the other.
 
 ---
 
@@ -38,12 +40,12 @@ This board handles all claw actuation via stepper motors. It implements:
 
 **Key files:**
 - `stepper.c/h` – Handles motion profiles and step generation
-- `serialise.c/h` – Parses incoming commands and updates state
-- `axis_control.c/h` – Manages target positions and acceleration
+- `command_parser.c/h` – Parses incoming commands and updates state
+- `servo.c/h` – Handles the servo motor control
 
 **Inputs:**
-- Target position or velocity from Controller board
-- Homing commands
+- Target velocity from Controller board
+- Claw open and close commands
 
 **Outputs:**
 - Position reached or movement status
