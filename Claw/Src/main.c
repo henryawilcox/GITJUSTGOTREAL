@@ -36,33 +36,19 @@
 int main(void)
 {
 
-//	SCB->CPACR |= (0xF << 20);  // Enable CP10 and CP11 (FPU)
 	SerialInitialise(BAUD_115200, &USART1_PORT, 8, command_parser_execute);
 	SerialInitialise(BAUD_115200, &USART2_PORT, 8, command_parser_execute);
 
 	enable_interrupt_USART1_PC11();
 	enable_interrupt_USART2_PA3();
 
-	SerialOutputStringInterrupt((uint8_t *)"Steppers Initialised\r\n", &USART1_PORT);
-
 	Servo_Init();
-
 	stepper_control_init();
-//	SerialOutputStringInterrupt((uint8_t *)"Steppers Initialised\r\n", &USART1_PORT);
 
+	SerialOutputStringInterrupt((uint8_t *)"Steppers Initialised\r\n", &USART1_PORT);
 
 
 //    /* Loop forever */
 	for(;;){
-//		char buf[64];
-//		snprintf(buf, sizeof(buf), "testing...\r\n");
-//		SerialOutputString((uint8_t*)buf, &USART1_PORT);
-//
-//		if ((AXIS0_GPIO_PORT->IDR & (1 << AXIS0_LIMIT_PIN)) != 0) {
-//			char buf[64];
-//			snprintf(buf, sizeof(buf), "PRESSED\r\n");
-//			SerialOutputString((uint8_t*)buf, &USART1_PORT);
-//		}
-
 	};
 }
