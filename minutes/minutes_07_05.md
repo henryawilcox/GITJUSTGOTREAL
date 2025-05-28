@@ -5,7 +5,7 @@
 - **Time:** 2:00pm
 - **Location:** In Class
 - **Attendees:** Connor, Angus, Henry, Oscar
-- **Absent:** N/A
+- **Absent:** Ridwan
 - **Minute Taker:** Connor
 
 ---
