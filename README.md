@@ -5,8 +5,10 @@
 
 This project is an interactive treasure hunt challenge built around three STM32F3 Discovery boards working in tandem. The system is modular and incorporates:
 - A **claw mechanism** for object retrieval
-- A **controller module** with tilt-based input
-- An **IR sensor array** for object/path detection
+- A **controller module** with tilt-based input, lidar for the z axis and a button to open and close the claw
+- An **IR sensor array** for detecting if the blocks are placed in the right place.
+
+The system has been designed for modularity with each module working independent.
 
 The STM32 boards communicate using a custom binary serialization protocol over UART, with each board handling a specific subsystem. This README outlines how to set up and integrate the system, as well as a breakdown of each module's functionality.
 
@@ -15,8 +17,11 @@ The STM32 boards communicate using a custom binary serialization protocol over U
 ## System Architecture
 
 ```
-[Controller STM32] <-UART-> [Claw STM32] <-UART-> [IR STM32]
+[Controller STM32] <-UART-> [Claw STM32]
+
+[GUI computer] <-UART-> [IR STM32]
 ```
+
 
 All boards share a common 5V power supply and ground reference. Each board uses a structured packet-based protocol to communicate with the others.
 
