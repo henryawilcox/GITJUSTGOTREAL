@@ -18,8 +18,7 @@ The STM32 boards communicate using a custom binary serialization protocol over U
 - Use the python GUI to control the operations of the machine
 - Pick a level, the higher the level the less time you have
 - The button opens and closes the claw while moving your hand infront of the LIDAR sensor picks the height of the claw while moving the STM controller controls the position. How wacky!
-
-*Its that simple*
+*Its that simple**
 
 ---
 
@@ -141,6 +140,193 @@ There is **no dynamic header or length field**; packets are fixed-size and inter
 - `0x00` Sensor 2 Value
 - `0x00` Sensor 3 Value
 
+# LiDAR Module Testing – LED Visualization & Serial Packet Validation
+
+This document outlines how to test the LiDAR sensor module integrated with an STM32F3 microcontroller. The testing is divided into two parts:
+
+1. **LED-Based Distance Visualization**  
+2. **Serial Packet Transmission and Python Script Validation**
+
+---
+
+## 🔧 Hardware Setup
+
+- **Microcontroller:** STM32F3
+- **Sensor:** LiDAR module (PWM or I2C output)
+- **Indicators:** On-board or external LEDs connected to GPIO pins
+- **Communication:** UART (e.g., USART1) for serial data transmission
+
+---
+
+## 🧪 1. LED-Based Distance Visualization
+
+### Overview
+The LiDAR module outputs distance measurements which are mapped to a range (e.g., 0–100%) and displayed via a set of LEDs.
+
+### How It Works
+- The measured height is averaged and converted to a percentage.
+- LEDs turn on progressively to represent height/distance bands.
+
+### Example Mapping
+- 1 LED ON: 0–25%
+- 2 LEDs ON: 25–50%
+- 3 LEDs ON: 50–75%
+- 4 LEDs ON: 75–100%
+
+### Running the Test
+1. Flash your STM32 with the firmware containing the LiDAR + LED logic.
+2. Power the board.
+3. Move an object at various distances in front of the LiDAR.
+4. Observe the number of LEDs lighting up based on distance.
+
+---
+
+## 🧪 2. Serial Packet Transmission & Python Validation
+
+### Overview
+LiDAR data is serialized and sent over UART as structured packets (e.g., 8 bytes). A Python script reads and decodes these packets for verification.
+
+### Packet Format (Example)
+| Byte Index | Description     |
+|------------|------------------|
+| 0          | Start Byte (0xAA)|
+| 1          | Packet Type      |
+| 2          | X-mapped Value   |
+| 3          | Y-mapped Value   |
+| 4          | Magnitude        |
+| 5          | Z low byte       |
+| 6          | Z high byte      |
+| 7          | End Byte (e.g., checksum or 0xFF) |
+
+### Python Script Requirements
+- Python 3.x
+- `pyserial` module (`pip install pyserial`)
+
+### Sample Script
+```python
+import serial
+import struct
+
+ser = serial.Serial('COM3', 115200, timeout=1)
+
+def read_packet():
+    while True:
+        byte = ser.read(1)
+        if byte == b'\xAA':
+            rest = ser.read(7)
+            if len(rest) != 7:
+                continue
+
+            packet = byte + rest
+            start_byte = packet[0]
+            packet_type = packet[1]
+
+            if packet_type == 0x01:
+                # Motion packet
+                _, _, vx, vy, mag, z_low, z_high, _ = struct.unpack("8B", packet)
+                z = z_low | (z_high << 8)
+                print(f"[MOTION] vx: {vx}, vy: {vy}, mag: {mag}, z: {z}")
+
+            elif packet_type == 0x02:
+                print("[BUTTON] Claw CLOSE (button PRESSED)")
+
+            elif packet_type == 0x03:
+                print("[BUTTON] Claw OPEN (button RELEASED)")
+
+            else:
+                print(f"[UNKNOWN PACKET] Raw: {packet.hex()}")
+
+try:
+    print("Listening for packets...")
+    while True:
+        read_packet()
+except KeyboardInterrupt:
+    print("Stopped.")
+finally:
+    ser.close()
+
+````
+## 🧪 Gantry & Stepper Motor Testing (with Controller)
+
+This section outlines how to verify proper operation of the gantry system and its stepper motors using a control interface.
+
+---
+
+### 🔧 Hardware Components
+
+- **Stepper Motors:** X and Y axis (and Z if applicable)
+- **Motor Drivers:** e.g., A4988, DRV8825, or TMC series
+- **Controller Interface:** Serial terminal, joystick, or button-based UI
+- **Microcontroller:** STM32F3 (or equivalent)
+- **Power Supply:** Sufficient current for all stepper motors
+
+---
+
+### 🎮 Control Interface Options
+
+1. **Serial Commands via UART**  
+   Send motion commands over serial (e.g., `move x +100`, `home y`, etc.)
+
+2. **Joystick or Button Input**  
+   Map directional inputs to motor steps for manual movement.
+
+3. **Custom Packet-Based Protocol**  
+   Receive structured packets to control movement precisely.
+
+---
+
+### 🧪 Test Procedure
+
+#### ✅ 1. Homing Test
+- Send command: `home all`
+- Gantry should move to limit switches and stop.
+- Verify each axis correctly triggers its limit switch.
+
+#### ✅ 2. Manual Movement Test
+- Command or press button to:
+  - Move X +10mm → Observe motion.
+  - Move Y -10mm → Observe motion.
+- Test all directions (X+, X−, Y+, Y−).
+
+#### ✅ 3. Continuous Motion
+- Use joystick or a "hold-to-move" button for continuous stepping.
+- Check for smooth, uninterrupted motion without skipping steps.
+
+#### ✅ 4. Boundary Testing
+- Drive each axis to its max range.
+- Verify physical and software limits are respected.
+- Ensure no mechanical collisions or overshooting.
+
+#### ✅ 5. Step Calibration (Optional)
+- Measure actual travel distance.
+- Compare against expected steps/mm.
+- Adjust microstepping or step calibration factor if needed.
+
+---
+
+### 🧠 Troubleshooting Tips
+
+- **Motor Not Moving:** Check enable pins, driver wiring, and power supply.
+- **Motor Vibrates or Stalls:** Reduce acceleration or step rate.
+- **Inconsistent Travel:** Confirm step count per mm and tighten belts or leadscrews.
+- **Overtravel:** Re-check limit switch logic and debounce time.
+
+---
+
+### ✅ Expected Outcomes
+
+| Test Step        | Expected Result                                  |
+|------------------|--------------------------------------------------|
+| Homing           | Axis moves toward limit switches and stops       |
+| Manual Move      | Axis moves smoothly in requested direction       |
+| Boundaries       | No motion beyond configured travel limits        |
+| Continuous Input | Smooth motion with no skipping or jitter         |
+
+---
+
+## 🚀 Ready to Integrate
+
+Once gantry motion and motor control are validated, you can integrate this into your main application loop or automated routines (e.g., pick-and-place, scanning, or claw control).
 
 ### Transmission Order
 
