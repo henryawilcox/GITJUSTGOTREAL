@@ -32,23 +32,35 @@ Both submodules share a common ground reference. Each board uses a structured pa
 ## Module Breakdown
 
 ### 1. Claw Board (Claw STM32)
-This board handles all claw actuation via stepper motors. It implements:
-- Stepper control via timer interrupts
-- Position-based or velocity-based movement
-- Homing logic with limit switches (deprecated)
-- Serial command interface to receive motion commands
+This board handles all claw actuation via stepper motors and a servo-controlled claw. It is designed for real-time responsive motion based on velocity commands from the controller board.
 
-**Key files:**
-- `stepper.c/h` – Handles motion profiles and step generation
-- `command_parser.c/h` – Parses incoming commands and updates state
-- `servo.c/h` – Handles the servo motor control
+#### Stepper Motor Control Design
 
-**Inputs:**
-- Target velocity from Controller board
-- Claw open and close commands
+- A global **40 microsecond interrupt** is triggered by a timer, used to drive stepping decisions across all axes.
+- The motion planning is governed by a **velocity index (0–99)** which determines the delay between steps via a `delay_table[]`.
+- The system uses **Bresenham’s Line Algorithm** to handle X/Y stepping synchronisation, ensuring smooth diagonal motion.
+- **Acceleration and deceleration** are managed using a `timer_reload_table[]`, which ramps the delay values up or down to change speed gradually.
+- Each stepper axis maintains its own step delay, position tracking, and direction state.
 
-**Outputs:**
-- Position reached or movement status
+#### Servo Control
+
+- A command parser handles servo commands (open/close) and updates PWM output.
+- Servo angle or duty cycle is set based on parsed command values.
+- The claw opens or closes based on a fixed predefined angle or pulse width.
+
+#### Key files:
+- `stepper.c/h` – Motion profiles, step logic, ISR
+- `command_parser.c/h` – Parses and routes incoming serial commands
+- `servo.c/h` – Generates and updates PWM for servo actuation
+
+#### Inputs:
+- Target velocity commands (vx, vy) and magnitude index from Controller board
+- Claw open/close commands
+
+#### Outputs:
+- Position tracking (used internally)
+- Optional debug messages or status flags
+- Motor enable/disable status for safety
 
 ### 2. Controller/Tilt Board (Controller STM32)
 This board serves as the input device and human interface. It includes:
