@@ -120,6 +120,18 @@ There is **no dynamic header or length field**; packets are fixed-size and inter
   - `0x00` — Padding
   - `0x00` — Padding
   - `0x00` — Padding
+  - 
+
+  -**IR Packet**
+- `b` - Start bit
+- `b` - Stop Bit
+- `b` - Game active bit
+- `0x01` - Level state byte
+- `0x00` - Time from STM
+- `b`-Sensor 1 Value
+- `b` Sensor 2 Value
+- `b` Sensor 3 Value
+
 
 ### Transmission Order
 
