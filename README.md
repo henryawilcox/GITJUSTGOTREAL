@@ -1,5 +1,5 @@
 # GITJUSTGOTREAL
-# MTRX2700 Treasure Hunt Project
+# MTRX2700 Treasure Hunt Project 🔍
 
 ## Overview
 
