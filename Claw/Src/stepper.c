@@ -79,6 +79,7 @@ void TIM2_IRQHandler(void) {
     corexy.tick_counter--;
 
     if (corexy.tick_counter <= 0) {
+        // check which motor is the fastest for the bresenham algorithm
         if (corexy.a_steps >= corexy.b_steps) {
             step_motor_A();
             corexy.a_error += corexy.b_steps;
@@ -122,6 +123,7 @@ void plan_velocity(int8_t vx, int8_t vy, uint8_t index) {
         return;
     }
 
+    //caluclations for core xy conversion
     int vA = vx + vy;
     int vB = vx - vy;
     corexy.signA = (vA >= 0) ? 1 : -1;
@@ -152,6 +154,7 @@ void set_z_target(int16_t z_target) {
 }
 
 // === Step Functions ===
+//compiled inline to reduce CPU instructions
 static inline void step_motor_A(void) {
     if (corexy.signA == 0) return;
     int32_t x_next = corexy.x + corexy.signA;
@@ -174,7 +177,8 @@ static inline void step_motor_B(void) {
     corexy.y = y_next;
 }
 
-
+// === Axis initialisers  ===
+//for speed tthere are no variables for the config so everything has to be hardcode
 
 void init_axis0_gpio(void) {
     // --- Enable clock for GPIO port used by AXIS0 ---
@@ -207,6 +211,8 @@ void init_axis0_gpio(void) {
     // Optional: enable pull-up if limit switch is normally open
     // AXIS0_GPIO_PORT->PUPDR |= (1 << (AXIS0_LIMIT_PIN * 2));        // Pull-up
 }
+
+
 
 void init_axis1_gpio(void) {
     // --- Enable clock for GPIO port used by AXIS0 ---
