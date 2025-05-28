@@ -1,4 +1,0 @@
-../Src/servo.c:28:6:Servo_Init	1
-../Src/servo.c:61:6:Servo_SetPulse	3
-../Src/servo.c:70:6:Servo_Open	1
-../Src/servo.c:77:6:Servo_Close	1

@@ -1,4 +1,0 @@
-../Src/servo.c:28:6:Servo_Init	8	static
-../Src/servo.c:61:6:Servo_SetPulse	16	static
-../Src/servo.c:70:6:Servo_Open	8	static
-../Src/servo.c:77:6:Servo_Close	8	static

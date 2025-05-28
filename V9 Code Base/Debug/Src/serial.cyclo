@@ -1,8 +1,0 @@
-C:/Users/AngusMclean/Downloads/MTRX2700-2025-main/MTRX2700-2025-main/stm32f303-definitions/Core/Inc/core_cm4.h:1688:22:__NVIC_EnableIRQ	2
-C:/Users/AngusMclean/Downloads/MTRX2700-2025-main/MTRX2700-2025-main/stm32f303-definitions/Core/Inc/core_cm4.h:1816:22:__NVIC_SetPriority	2
-../Src/serial.c:44:6:SerialInitialise	8
-../Src/serial.c:80:6:enable_interrupt_USART1_PC11	1
-../Src/serial.c:88:6:enable_interrupt_USART2_PA3	1
-../Src/serial.c:97:6:USART1_EXTI25_IRQHandler	8
-../Src/serial.c:123:6:USART2_EXTI26_IRQHandler	8
-../Src/serial.c:149:6:SerialOutputStringInterrupt	4
