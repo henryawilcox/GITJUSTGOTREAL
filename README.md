@@ -12,6 +12,13 @@ The system has been designed for modularity with each module working independent
 
 The STM32 boards communicate using a custom binary serialization protocol over UART, with each board handling a specific subsystem. This README outlines how to set up and integrate the system, as well as a breakdown of each module's functionality.
 
+## Instructions for use
+
+-Ensure system is connected properly with wires to their desination and source correct per diagram
+-Use the python GUI to control the operations of the machine
+-Pick a level, the higher the level the less time you have
+-The button opens and closes the claw while moving your hand infront of the LIDAR sensor picks the height of the claw while moving the STM controller controls the position. How wacky!
+*Its that simple**
 ---
 
 ## System Architecture
