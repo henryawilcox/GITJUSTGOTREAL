@@ -1,0 +1,319 @@
+import pygame
+import serial
+import struct
+import sys
+import random
+import time
+from enum import Enum
+from colorama import init, Fore, Style
+
+# Initialize colorama for console output
+init()
+
+# --- Serial Protocol Constants ---
+SENTINEL_1 = 0xAA
+SENTINEL_2 = 0x55
+
+class MessageType(Enum):
+    GAME_DATA = 0
+    TIME_DATA = 1
+    IR_DATA = 2
+
+# --- Game Constants ---
+WIDTH, HEIGHT = 800, 500
+IR_WIN_THRESHOLD = 3000
+DVD_SPEED = [3, 2]
+PORT = '/dev/tty.usbmodem1103'
+BAUD = 115200
+
+# --- Pygame Setup ---
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("STM32 Game Interface")
+font = pygame.font.SysFont("Arial", 28)
+clock = pygame.time.Clock()
+
+# --- Sprite Setup ---
+try:
+    sprite_img = pygame.image.load("dvd_logo.png").convert_alpha()
+    sprite_img = pygame.transform.scale(sprite_img, (100, 50))
+except pygame.error:
+    # Create a simple rectangle if image not found
+    sprite_img = pygame.Surface((100, 50))
+    sprite_img.fill((255, 255, 255))
+
+sprite_rect = sprite_img.get_rect()
+sprite_speed = DVD_SPEED[:]
+sprite_rect.topleft = [
+    random.randint(0, max(0, WIDTH - sprite_rect.width)),
+    random.randint(0, max(0, HEIGHT - sprite_rect.height))
+]
+
+# --- Game State ---
+data_state = {
+    "game": {"START": 0, "ACTIVE": 0, "LEVEL": 1},
+    "time": 0,
+    "ir": {"sensor1": 0, "sensor2": 0, "sensor3": 0}
+}
+
+mode = "menu"  # menu, playing, lost, win
+last_result_time = 0
+
+def pack_buffer(message_type, data):
+    """Pack message buffer with header"""
+    data_length = len(data)
+    header = struct.pack('<BBHH', SENTINEL_1, SENTINEL_2, message_type.value, data_length)
+    return header + data
+
+def receive_and_unpack_buffer(ser):
+    """Receive and unpack buffer from serial port"""
+    # Non-blocking check for data
+    if ser.in_waiting < 6:  # Minimum header size
+        return None, None
+    
+    # Wait for the sentinel bytes
+    while ser.in_waiting > 0:
+        byte = ser.read(1)
+        if len(byte) == 0:
+            return None, None
+        if byte == bytes([SENTINEL_1]):
+            if ser.in_waiting > 0:
+                byte = ser.read(1)
+                if len(byte) > 0 and byte == bytes([SENTINEL_2]):
+                    break
+            else:
+                return None, None
+    else:
+        return None, None
+    
+    # Read the remaining header bytes
+    header_length = 4
+    if ser.in_waiting < header_length:
+        return None, None
+    
+    header_buffer = ser.read(header_length)
+    header_buffer = bytes([SENTINEL_1, SENTINEL_2]) + header_buffer
+    
+    # Check the entire header was loaded
+    if len(header_buffer) < 6:
+        return None, None
+    
+    # unpack the header
+    sentinel1, sentinel2, message_type_received, data_length = struct.unpack('<BBHH', header_buffer[:6])
+    
+    # double check the header
+    if sentinel1 != SENTINEL_1 or sentinel2 != SENTINEL_2:
+        return None, None
+    
+    # Read the data based on the data length specified in the header
+    if ser.in_waiting < data_length:
+        return None, None
+    
+    data_buffer = ser.read(data_length)
+    
+    try:
+        return MessageType(message_type_received), data_buffer
+    except ValueError:
+        print(f"Unknown message type: {message_type_received}")
+        return None, None
+
+def send_game_command(ser, start: bool, level: int = 1):
+    """Send game start/stop command to STM32"""
+    START_val = 1 if start else 0
+    ACTIVE_val = 0  # STM32 will set this when game actually starts
+    
+    # Pack as: int8_t START, int8_t STOP, int8_t ACTIVE, int8_t LEVEL
+    data = struct.pack('<bbb', START_val, ACTIVE_val, level)
+    buffer = pack_buffer(MessageType.GAME_DATA, data)
+    ser.write(buffer)
+    print(f"{Fore.GREEN}Sent game command: START={START_val}, LEVEL={level}{Style.RESET_ALL}")
+
+# --- Drawing Functions ---
+def bounce_sprite():
+    """Animate bouncing DVD logo sprite"""
+    global sprite_rect, sprite_speed
+    sprite_rect.x += sprite_speed[0]
+    sprite_rect.y += sprite_speed[1]
+    if sprite_rect.left <= 0 or sprite_rect.right >= WIDTH:
+        sprite_speed[0] *= -1
+    if sprite_rect.top <= 0 or sprite_rect.bottom >= HEIGHT:
+        sprite_speed[1] *= -1
+    screen.blit(sprite_img, sprite_rect)
+
+def render(text, y, color=(255, 255, 255)):
+    """Render text at specified position"""
+    label = font.render(text, True, color)
+    screen.blit(label, (20, y))
+
+def draw_game(data_state):
+    """Draw the main game interface"""
+    screen.fill((20, 20, 20))
+    render("STM32 Game State", 20)
+    
+    game_data = data_state["game"]
+  
+    render(f"Level:  {game_data['LEVEL']}", 150)
+    render(f"Time:   {data_state['time']} s", 180)
+
+    # IR Sensor Display
+    ir_data = data_state["ir"]
+    ir_color = lambda v: (0, 255, 0) if v >= IR_WIN_THRESHOLD else (255, 50, 50)
+    render(f"IR1:    {ir_data['sensor1']}", 220, ir_color(ir_data['sensor1']))
+    render(f"IR2:    {ir_data['sensor2']}", 250, ir_color(ir_data['sensor2']))
+    render(f"IR3:    {ir_data['sensor3']}", 280, ir_color(ir_data['sensor3']))
+
+    button_rect = pygame.Rect(WIDTH - 200, HEIGHT - 70, 180, 50)
+    pygame.draw.rect(screen, (200, 50, 50), button_rect, border_radius=8)
+    label = font.render("Main Menu", True, (255, 255, 255))
+    screen.blit(label, (button_rect.x + 20, button_rect.y + 10))
+
+    bounce_sprite()
+    pygame.display.flip()
+
+    return button_rect
+
+def draw_menu():
+    """Draw the level selection menu"""
+    screen.fill((15, 15, 15))
+    title = font.render("SELECT A LEVEL", True, (200, 200, 200))
+    screen.blit(title, ((WIDTH - title.get_width()) // 2, 50))
+
+    buttons = []
+    for i, text in enumerate(["Level 1", "Level 2", "Level 3"]):
+        rect = pygame.Rect(300, 130 + i * 80, 200, 60)
+        pygame.draw.rect(screen, (70, 70, 255), rect, border_radius=10)
+        label = font.render(text, True, (255, 255, 255))
+        screen.blit(label, (rect.x + 50, rect.y + 15))
+        buttons.append((rect, i + 1))
+    
+    bounce_sprite()
+    pygame.display.flip()
+    return buttons
+
+def draw_result_screen(text, color):
+    """Draw win/lose result screen"""
+    screen.fill((0, 0, 0))
+    label = font.render(text, True, color)
+    screen.blit(label, ((WIDTH - label.get_width()) // 2, HEIGHT // 2))
+    bounce_sprite()
+    pygame.display.flip()
+
+def process_received_data(ser, data_state):
+    """Process incoming data from STM32"""
+    message_type, data = receive_and_unpack_buffer(ser)
+    
+    if message_type is None:
+        return False
+        
+    if message_type == MessageType.GAME_DATA:
+            game_data = struct.unpack('<bbb', data)
+            data_state["game"]["START"], data_state["game"]["ACTIVE"], data_state["game"]["LEVEL"] = game_data
+            print(f'{Fore.BLUE}GAME STATE: {game_data}{Style.RESET_ALL}')
+            return True
+
+            
+    elif message_type == MessageType.TIME_DATA:
+        if len(data) >= 2:
+            time_data = struct.unpack('<h', data)
+            data_state["time"] = time_data[0]
+            print(f'{Fore.MAGENTA}TIME: {time_data}{Style.RESET_ALL}')
+            return True
+        else:
+            print(f'{Fore.RED}Invalid TIME_DATA length: {len(data)}{Style.RESET_ALL}')
+            
+    elif message_type == MessageType.IR_DATA:
+        if len(data) >= 3:
+            IR_data = struct.unpack('<bbb', data)
+            data_state["ir"]["sensor1"], data_state["ir"]["sensor2"], data_state["ir"]["sensor3"] = IR_data
+            print(f'{Fore.YELLOW}IR STATE: {IR_data}{Style.RESET_ALL}')
+            return True
+        else:
+            print(f'{Fore.RED}Invalid IR_DATA length: {len(data)}{Style.RESET_ALL}')
+    
+    return False
+
+
+def main():
+    global mode, last_result_time, data_state
+
+    main_menu_button_rect = None 
+    
+    # Setup serial connection
+    try:
+        ser = serial.Serial(PORT, BAUD, timeout=0.1)  # Non-blocking timeout
+        print(f"{Fore.CYAN}Serial port opened successfully{Style.RESET_ALL}")
+    except serial.SerialException as e:
+        print(f"{Fore.RED}Failed to open serial port: {e}{Style.RESET_ALL}")
+        pygame.quit()
+        sys.exit(1)
+    
+    running = True
+    level_buttons = []
+    
+    try:
+        while running:
+            # Handle pygame events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+                if mode == "menu":
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        for rect, level_val in level_buttons:
+                            if rect.collidepoint(event.pos):
+                                send_game_command(ser, start=True, level=level_val)
+                                data_state["game"] = {"START": 1, "ACTIVE": 0, "LEVEL": level_val}
+                                data_state["ir"] = {"sensor1": 0, "sensor2": 0, "sensor3": 0}
+                                data_state["time"] = 0
+                                mode = "playing"
+                                break
+
+            # Process incoming serial data
+            if mode == "playing":
+                if event.type == pygame.MOUSEBUTTONDOWN and main_menu_button_rect:
+                    if main_menu_button_rect.collidepoint(event.pos):
+                        mode = "menu"
+                        data_state = {
+                            "game": {"START": 0, "ACTIVE": 0, "LEVEL": 1},
+                            "time": 0,
+                            "ir": {"sensor1": 0, "sensor2": 0, "sensor3": 0}
+                        }
+                data_updated = process_received_data(ser, data_state)
+                
+                # Check win/lose conditions based on game state
+                if data_updated:
+                    if data_state["time"] == 0:  # Lost condition
+                        mode = "lost"
+                        data_state["ir"] = {"sensor1": 0, "sensor2": 0, "sensor3": 0}
+                        last_result_time = time.time()
+                    elif data_state["ir"]["sensor1"] == 1 and data_state["ir"]["sensor2"] == 1 and data_state["ir"]["sensor3"] == 1: # Win condition
+                        mode = "win"
+                        data_state["ir"] = {"sensor1": 0, "sensor2": 0, "sensor3": 0}
+                        last_result_time = time.time()
+
+            # Draw appropriate screen
+            if mode == "menu":
+                level_buttons = draw_menu()
+            elif mode == "playing":
+                 main_menu_button_rect = draw_game(data_state)
+            elif mode == "lost":
+                draw_result_screen("YOU LOST!", (255, 0, 0))
+                if time.time() - last_result_time > 3:
+                    mode = "menu"
+            elif mode == "win":
+                draw_result_screen("YOU WIN!", (0, 255, 100))
+                if time.time() - last_result_time > 3:
+                    mode = "menu"
+
+            clock.tick(60)
+    
+    
+    except Exception as e:
+        print(f"{Fore.RED}An error occurred: {e}{Style.RESET_ALL}")
+    finally:
+        ser.close()
+        print(f"{Fore.CYAN}Serial port closed{Style.RESET_ALL}")
+        pygame.quit()
+
+if __name__ == "__main__":
+    main()
