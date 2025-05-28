@@ -81,28 +81,38 @@ This board monitors proximity using a bank of IR reflectance sensors. It impleme
 
 All boards communicate via a custom binary packet structure.
 
-### Packet Header Format:
-```c
-typedef struct {
-    uint8_t sentinel1;     // 0xAA
-    uint8_t sentinel2;     // 0x55
-    uint16_t message_type; // e.g. 0x0001 for velocity, 0x0002 for status
-    uint16_t data_length;  // Length of payload in bytes
-} Header;
-```
+### Packet Format
 
-### Example Payloads:
-- **Velocity Command:** Two `int8_t` values for `vx` and `vy`, plus a `uint8_t` speed index
-- **Claw Position:** `int16_t` target position
-- **IR Status:** `uint8_t` array of active sensor bits
+All packets are **8 bytes long** and begin with a single **start byte `0xAA`**. The second byte indicates the **packet type or command**, followed by a payload specific to the message.
 
-The packet is transmitted in the following order:
-1. 6-byte header
-2. Data payload of `data_length` bytes
+There is **no dynamic header or length field**; packets are fixed-size and interpreted based on their second byte.
 
-A central parsing function waits for the sentinel pair (0xAA, 0x55), reads the header, then dispatches the payload to the appropriate handler.
+### Packet Structures
 
----
+- **Movement Packet**
+  - `0xAA` — Start byte
+  - `0x01` — Movement command ID
+  - `int8_t vx` — X-axis velocity
+  - `int8_t vy` — Y-axis velocity
+  - `uint8_t mag` — Calculated magnitude (capped at 99)
+  - `uint8_t z_low` — LIDAR height (low byte)
+  - `uint8_t z_high` — LIDAR height (high byte)
+  - `0x00` — Reserved or placeholder for checksum
+
+- **Claw Packet**
+  - `0xAA` — Start byte
+  - `uint8_t command` — `0x02` = Close, `0x03` = Open
+  - `0x00` — Padding
+  - `0x00` — Padding
+  - `0x00` — Padding
+  - `0x00` — Padding
+  - `0x00` — Padding
+  - `0x00` — Padding
+
+### Transmission Order
+
+Packets are sent as **a continuous 8-byte block** with a known format based on the second byte. The receiver reads the first byte (`0xAA`) to confirm the start of a valid packet and then parses based on the packet ID in byte 1.
+
 
 ## Integration Tips
 
